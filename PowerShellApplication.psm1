@@ -1,13 +1,20 @@
 ﻿function Install-PowerShellApplicationScheduledTask {
     param (
         $PathToScriptForScheduledTask = $PSScriptRoot,
-        [Parameter(Mandatory)]$ScheduledTaskUserPassword,
+        [Parameter(ParameterSetName="NoCredential")]$ScheduledTaskUsername = "$env:USERDOMAIN\$env:USERNAME",
+        [Parameter(Mandatory,ParameterSetName="NoCredential")]$ScheduledTaskUserPassword,
+        [Parameter(Mandatory,ParameterSetName="Credential")]$Credential,
         [Parameter(Mandatory)]$ScheduledTaskFunctionName,
-        
+
         [Parameter(Mandatory)]
         [ValidateSet("EveryMinuteOfEveryDay","OnceAWeekMondayMorning","OnceAWeekTuesdayMorning")]
         $RepetitionInterval
     )
+    if ($Credential) {
+        $ScheduledTaskUsername = $Credential.UserName
+        $ScheduledTaskUserPassword = $Credential.GetNetworkCredential().password
+    }
+
     $ScriptFilePath = "$PathToScriptForScheduledTask\$ScheduledTaskFunctionName.ps1"
     
 @"
@@ -22,7 +29,7 @@ $ScheduledTaskFunctionName
                     -TaskPath "\" `
                     -Action $ScheduledTaskAction `
                     -Trigger $ScheduledTaskTrigger `
-                    -User "$env:USERDOMAIN\$env:USERNAME" `
+                    -User $ScheduledTaskUsername `
                     -Password $ScheduledTaskUserPassword `
                     -Settings $ScheduledTaskSettingsSet
 

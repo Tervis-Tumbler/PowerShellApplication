@@ -43,7 +43,7 @@ $ScheduledTaskFunctionName
     }
 
     $Task.Triggers[0].ExecutionTimeLimit = "PT30M"
-    $task | Set-ScheduledTask -Password $ScheduledTaskUserPassword -User $ScheduledTaskUsername
+    $task | Set-ScheduledTask -Password $ScheduledTaskUserPassword -User $ScheduledTaskUsername | Out-Null
 }
 
 function Uninstall-PowerShellApplicationScheduledTask {
@@ -83,6 +83,6 @@ $RepetitionIntervals = [PSCustomObject][Ordered]@{
 [PSCustomObject][Ordered]@{
     Name = "EverWorkdayDuringTheDayEvery15Minutes"
     ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7am)
-    TaskTriggersRepetitionDuration = "PT10H"
+    TaskTriggersRepetitionDuration = "PT12H"
     TaskTriggersRepetitionInterval = "PT15M"
 }

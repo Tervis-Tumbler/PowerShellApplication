@@ -7,8 +7,9 @@
         [Parameter(Mandatory)]$ScheduledTaskFunctionName,
 
         [Parameter(Mandatory)]
-        [ValidateSet("EveryMinuteOfEveryDay","OnceAWeekMondayMorning","OnceAWeekTuesdayMorning")]
-        $RepetitionInterval
+        [Alias("RepetitionInterval")]
+        [ValidateScript({ $_ | Get-RepetitionInterval })]
+        $RepetitionIntervalName
     )
     if ($Credential) {
         $ScheduledTaskUsername = $Credential.UserName
@@ -22,7 +23,8 @@ $ScheduledTaskFunctionName
 "@ | Out-File $ScriptFilePath -Force
 
     $ScheduledTaskAction = New-ScheduledTaskAction –Execute "Powershell.exe" -Argument "-noprofile -file $ScriptFilePath"
-    $ScheduledTaskTrigger = Get-PowerShellApplicationScheduledTaskTrigger -RepetitionInterval $RepetitionInterval
+    $RepetitionInterval = $RepetitionIntervalName | Get-RepetitionInterval    
+    $ScheduledTaskTrigger = $RepetitionInterval.ScheduledTaskTrigger
 
     $ScheduledTaskSettingsSet = New-ScheduledTaskSettingsSet
     $Task = Register-ScheduledTask -TaskName $ScheduledTaskFunctionName `
@@ -33,34 +35,15 @@ $ScheduledTaskFunctionName
                     -Password $ScheduledTaskUserPassword `
                     -Settings $ScheduledTaskSettingsSet
 
-    if ($RepetitionInterval -eq "EveryMinuteOfEveryDay") {
-        #There is a bug in Register-ScheduledTask that will not honor values for the RepetitionDuration and RepetitionInterval properties of ScheduledTaskTrigger
-        #so these have to be set after the task has been created
-
-        $task.Triggers.Repetition.Duration = "P1D" 
-        $task.Triggers.Repetition.Interval = "PT1M"
+    if ($RepetitionInterval.TaskTriggersRepetitionDuration) {
+        $task.Triggers.Repetition.Duration = $RepetitionInterval.TaskTriggersRepetitionDuration
+    }
+    if ($RepetitionInterval.TaskTriggersRepetitionInterval) { 
+        $task.Triggers.Repetition.Interval = $RepetitionInterval.TaskTriggersRepetitionInterval
     }
 
     $Task.Triggers[0].ExecutionTimeLimit = "PT30M"
-    $task | Set-ScheduledTask -Password $ScheduledTaskUserPassword -User "$env:USERDOMAIN\$env:USERNAME"
-}
-
-Function Get-PowerShellApplicationScheduledTaskTrigger {
-    param (
-        [Parameter(Mandatory)]
-        [ValidateSet("EveryMinuteOfEveryDay","OnceAWeekMondayMorning","OnceAWeekTuesdayMorning")]
-        $RepetitionInterval
-    )
-    if ($RepetitionInterval -eq "EveryMinuteOfEveryDay") {         
-        $ScheduledTaskTrigger = New-ScheduledTaskTrigger -Daily -At 12am
-        $ScheduledTaskTrigger.RepetitionDuration = New-TimeSpan -Days 1
-        $ScheduledTaskTrigger.RepetitionInterval = New-TimeSpan -Minutes 1
-        $ScheduledTaskTrigger
-    } elseif ($RepetitionInterval -eq "OnceAWeekMondayMorning") {
-        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8am        
-    } elseif ($RepetitionInterval -eq "OnceAWeekTuesdayMorning") {
-        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Tuesday -At 8am        
-    }
+    $task | Set-ScheduledTask -Password $ScheduledTaskUserPassword -User $ScheduledTaskUsername
 }
 
 function Uninstall-PowerShellApplicationScheduledTask {
@@ -77,7 +60,7 @@ function Uninstall-PowerShellApplicationScheduledTask {
 
 Function Get-RepetitionInterval {
     param (
-        $Name
+        [Parameter(ValueFromPipeline)]$Name
     )
     $RepetitionIntervals | 
     where Name -EQ $Name
@@ -85,18 +68,21 @@ Function Get-RepetitionInterval {
 
 $RepetitionIntervals = [PSCustomObject][Ordered]@{
     Name = "EveryMinuteOfEveryDay"
-    ScheduledTaskTrigger = "P1D"
-    Interval = "PT1M"
+    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Daily -At 12am)
+    TaskTriggersRepetitionDuration = "P1D"
+    TaskTriggersRepetitionInterval = "PT1M"
 },
 [PSCustomObject][Ordered]@{
     Name = "OnceAWeekMondayMorning"
+    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8am)
 },
 [PSCustomObject][Ordered]@{
     Name = "OnceAWeekTuesdayMorning"
+    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Tuesday -At 8am)
 },
 [PSCustomObject][Ordered]@{
-},
-[PSCustomObject][Ordered]@{
-},
-[PSCustomObject][Ordered]@{
+    Name = "EverWorkdayDuringTheDayEvery15Minutes"
+    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7am)
+    TaskTriggersRepetitionDuration = "PT10H"
+    TaskTriggersRepetitionInterval = "PT15M"
 }

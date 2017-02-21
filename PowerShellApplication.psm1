@@ -89,5 +89,11 @@ $RepetitionIntervals = [PSCustomObject][Ordered]@{
 [PSCustomObject][Ordered]@{
     Name = "EverWorkdayOnceAtTheStartOfTheDay"
     ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7am)
+},
+[PSCustomObject][Ordered]@{
+    Name = "EveryDayEvery15Minutes"
+    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Daily -At 12am)
+    TaskTriggersRepetitionDuration = "P1D"
+    TaskTriggersRepetitionInterval = "PT15M"
 }
 

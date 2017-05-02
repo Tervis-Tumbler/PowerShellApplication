@@ -1,99 +1,48 @@
-﻿function Install-PowerShellApplicationScheduledTask {
+﻿#requires -module TervisScheduledTasks
+function Install-PowerShellApplicationScheduledTask {
     param (
         $PathToScriptForScheduledTask = $PSScriptRoot,
         [Parameter(ParameterSetName="NoCredential")]$ScheduledTaskUsername = "$env:USERDOMAIN\$env:USERNAME",
         [Parameter(Mandatory,ParameterSetName="NoCredential")]$ScheduledTaskUserPassword,
         [Parameter(Mandatory,ParameterSetName="Credential")]$Credential,
         [Parameter(Mandatory)]$ScheduledTaskFunctionName,
-
-        [Parameter(Mandatory)]
-        [Alias("RepetitionInterval")]
-        [ValidateScript({ $_ | Get-RepetitionInterval })]
-        $RepetitionIntervalName
+        [Parameter(Mandatory)]$RepetitionInterval,
+        [Parameter(Mandatory)]$ComputerName
     )
+    $LocalScriptFilePath = "$PathToScriptForScheduledTask\$ScheduledTaskFunctionName.ps1"
+    $RemoteScriptFilePath = ConvertTo-RemotePath -Path $LocalScriptFilePath -ComputerName $ComputerName
     if ($Credential) {
         $ScheduledTaskUsername = $Credential.UserName
         $ScheduledTaskUserPassword = $Credential.GetNetworkCredential().password
     }
-
-    $ScriptFilePath = "$PathToScriptForScheduledTask\$ScheduledTaskFunctionName.ps1"
-    
+    $RemoteScriptDirectory = $RemoteScriptFilePath | Split-Path -Parent
+    if (-not (Test-Path -Path $RemoteScriptDirectory)) {
+        New-Item -Path $RemoteScriptDirectory -ItemType Directory | Out-Null
+    }
 @"
 $ScheduledTaskFunctionName
-"@ | Out-File $ScriptFilePath -Force
-
-    $ScheduledTaskAction = New-ScheduledTaskAction –Execute "Powershell.exe" -Argument "-noprofile -file $ScriptFilePath"
-    $RepetitionInterval = $RepetitionIntervalName | Get-RepetitionInterval    
-    $ScheduledTaskTrigger = $RepetitionInterval.ScheduledTaskTrigger
-
-    $ScheduledTaskSettingsSet = New-ScheduledTaskSettingsSet
-    $Task = Register-ScheduledTask -TaskName $ScheduledTaskFunctionName `
-                    -TaskPath "\" `
-                    -Action $ScheduledTaskAction `
-                    -Trigger $ScheduledTaskTrigger `
-                    -User $ScheduledTaskUsername `
-                    -Password $ScheduledTaskUserPassword `
-                    -Settings $ScheduledTaskSettingsSet
-
-    if ($RepetitionInterval.TaskTriggersRepetitionDuration) {
-        $task.Triggers.Repetition.Duration = $RepetitionInterval.TaskTriggersRepetitionDuration
+"@ | Out-File $RemoteScriptFilePath -Force
+    $ScheduledTaskActionObject = New-ScheduledTaskAction –Execute "Powershell.exe" -Argument "-noprofile -file $LocalScriptFilePath"
+    $TervisScheduledTaskArgs = @{
+        ScheduledTaskName = $ScheduledTaskFunctionName
+        ScheduledTaskAction = $ScheduledTaskActionObject
+        ScheduledTaskUsername = $ScheduledTaskUsername
+        ScheduledTaskUserPassword = $ScheduledTaskUserPassword
+        RepetitionInterval = $RepetitionInterval
+        ComputerName = $ComputerName
     }
-    if ($RepetitionInterval.TaskTriggersRepetitionInterval) { 
-        $task.Triggers.Repetition.Interval = $RepetitionInterval.TaskTriggersRepetitionInterval
-    }
-
-    $Task.Triggers[0].ExecutionTimeLimit = "PT30M"
-    $task | Set-ScheduledTask -Password $ScheduledTaskUserPassword -User $ScheduledTaskUsername | Out-Null
+    Install-TervisScheduledTask @TervisScheduledTaskArgs
 }
 
 function Uninstall-PowerShellApplicationScheduledTask {
     param (
         $PathToScriptForScheduledTask = $PSScriptRoot,
-        [Parameter(Mandatory)]$ScheduledTaskFunctionName
+        [Parameter(Mandatory)]$ScheduledTaskFunctionName,
+        [Parameter(Mandatory)]$ComputerName
     )
-    $Task = Get-ScheduledTask | where taskname -match $ScheduledTaskFunctionName
-    $Task | Unregister-ScheduledTask
+    Uninstall-TervisScheduledTask -ScheduledTaskName $ScheduledTaskFunctionName -ComputerName $ComputerName
 
     $ScriptFilePath = "$PathToScriptForScheduledTask\$ScheduledTaskFunctionName.ps1"
-    Remove-Item $ScriptFilePath
+    $RemoteScriptFilePath = ConvertTo-RemotePath -Path $ScriptFilePath -ComputerName $ComputerName
+    Remove-Item $RemoteScriptFilePath
 }
-
-Function Get-RepetitionInterval {
-    param (
-        [Parameter(ValueFromPipeline)]$Name
-    )
-    $RepetitionIntervals | 
-    where Name -EQ $Name
-}
-
-$RepetitionIntervals = [PSCustomObject][Ordered]@{
-    Name = "EveryMinuteOfEveryDay"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Daily -At 12am)
-    TaskTriggersRepetitionDuration = "P1D"
-    TaskTriggersRepetitionInterval = "PT1M"
-},
-[PSCustomObject][Ordered]@{
-    Name = "OnceAWeekMondayMorning"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 8am)
-},
-[PSCustomObject][Ordered]@{
-    Name = "OnceAWeekTuesdayMorning"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Tuesday -At 8am)
-},
-[PSCustomObject][Ordered]@{
-    Name = "EverWorkdayDuringTheDayEvery15Minutes"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7am)
-    TaskTriggersRepetitionDuration = "PT12H"
-    TaskTriggersRepetitionInterval = "PT15M"
-},
-[PSCustomObject][Ordered]@{
-    Name = "EverWorkdayOnceAtTheStartOfTheDay"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7am)
-},
-[PSCustomObject][Ordered]@{
-    Name = "EveryDayEvery15Minutes"
-    ScheduledTaskTrigger = $(New-ScheduledTaskTrigger -Daily -At 12am)
-    TaskTriggersRepetitionDuration = "P1D"
-    TaskTriggersRepetitionInterval = "PT15M"
-}
-

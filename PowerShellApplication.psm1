@@ -12,10 +12,6 @@ function Install-PowerShellApplicationScheduledTask {
     )
     $LocalScriptFilePath = "$PathToScriptForScheduledTask\$FunctionName.ps1"
     $RemoteScriptFilePath = ConvertTo-RemotePath -Path $LocalScriptFilePath -ComputerName $ComputerName
-    if ($Credential) {
-        $User= $Credential.UserName
-        $Password = $Credential.GetNetworkCredential().password
-    }
     $RemoteScriptDirectory = $RemoteScriptFilePath | Split-Path -Parent
     if (-not (Test-Path -Path $RemoteScriptDirectory)) {
         New-Item -Path $RemoteScriptDirectory -ItemType Directory | Out-Null
@@ -27,8 +23,7 @@ $FunctionName
     $TervisScheduledTaskArgs = @{
         TaskName = $FunctionName
         Action = $ScheduledTaskActionObject
-        Username = $ScheduledTaskUsername
-        UserPassword = $Password
+        Credential = $Credential
         RepetitionInterval = $RepetitionIntervalName
         ComputerName = $ComputerName
     }

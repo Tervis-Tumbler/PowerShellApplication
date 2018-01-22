@@ -1,33 +1,19 @@
 ﻿#requires -module TervisScheduledTasks
+
 function Install-PowerShellApplicationScheduledTask {
     param (
-        $PathToScriptForScheduledTask = $PSScriptRoot,
-        [Parameter(ParameterSetName="NoCredential")]$User = "$env:USERDOMAIN\$env:USERNAME",
-        [Parameter(Mandatory,ParameterSetName="NoCredential")]$Password,
-        [Parameter(Mandatory,ParameterSetName="Credential")]$Credential,
-        [Parameter(Mandatory)]$FunctionName,
+        [Parameter(Mandatory)]$Credential,        
+        [Parameter(Mandatory)]$FunctionName,        
         [Parameter(Mandatory)]
+        [ValidateScript({ $_ | Get-RepetitionInterval })]
         $RepetitionIntervalName,
-        $ComputerName = $env:COMPUTERNAME
+
+        [Parameter(Mandatory)]$ComputerName
     )
-    $LocalScriptFilePath = "$PathToScriptForScheduledTask\$FunctionName.ps1"
-    $RemoteScriptFilePath = ConvertTo-RemotePath -Path $LocalScriptFilePath -ComputerName $ComputerName
-    $RemoteScriptDirectory = $RemoteScriptFilePath | Split-Path -Parent
-    if (-not (Test-Path -Path $RemoteScriptDirectory)) {
-        New-Item -Path $RemoteScriptDirectory -ItemType Directory | Out-Null
+    process {
+        $Parameters = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty $FunctionName -AsHashTable
+        Install-TervisScheduledTask -TaskName $FunctionName -Execute "Powershell.exe" -Argument "-Command $FunctionName -NoProfile" @Parameters
     }
-@"
-$FunctionName
-"@ | Out-File $RemoteScriptFilePath -Force
-    $ScheduledTaskActionObject = New-ScheduledTaskAction –Execute "Powershell.exe" -Argument "-noprofile -file $LocalScriptFilePath"
-    $TervisScheduledTaskArgs = @{
-        TaskName = $FunctionName
-        Action = $ScheduledTaskActionObject
-        Credential = $Credential
-        RepetitionInterval = $RepetitionIntervalName
-        ComputerName = $ComputerName
-    }
-    Install-TervisScheduledTask @TervisScheduledTaskArgs
 }
 
 function Uninstall-PowerShellApplicationScheduledTask {

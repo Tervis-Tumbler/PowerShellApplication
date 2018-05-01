@@ -2,8 +2,9 @@
 
 function Install-PowerShellApplicationScheduledTask {
     param (
-        [Parameter(Mandatory)]$Credential,        
-        [Parameter(Mandatory)]$FunctionName,        
+        [Parameter(Mandatory)]$Credential,
+        [Parameter(Mandatory,ParameterSetName="FunctionName")]$FunctionName,
+        [Parameter(Mandatory,ParameterSetName="PathToScriptForScheduledTask")]$PathToScriptForScheduledTask,
         [Parameter(Mandatory)]
         [ValidateScript({ $_ | Get-RepetitionInterval })]
         $RepetitionIntervalName,
@@ -11,8 +12,16 @@ function Install-PowerShellApplicationScheduledTask {
         [Parameter(Mandatory)]$ComputerName
     )
     process {
-        $Parameters = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty $FunctionName -AsHashTable
-        Install-TervisScheduledTask -TaskName $FunctionName -Execute "Powershell.exe" -Argument "-Command $FunctionName -NoProfile" @Parameters
+        $Parameters = $PSBoundParameters | ConvertFrom-PSBoundParameters -ExcludeProperty FunctionName,ScriptFilePath -AsHashTable
+        $Arguement = "-NoProfile " + (
+            if ($FunctionName) {
+                "-Command $FunctionName"
+            } else {
+                "-File $PathToScriptForScheduledTask" 
+            }
+        )
+
+        Install-TervisScheduledTask -TaskName $FunctionName -Execute "Powershell.exe" -Argument $Arguement @Parameters
     }
 }
 

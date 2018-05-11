@@ -63,7 +63,13 @@ function Install-PowerShellApplication {
                 Target = $DirectoryRemote
             }
         }
-        (@($ModuleName) + $DependentTervisModuleNames) |
+
+        $ModuleName |
+        ForEach-Object { 
+            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+        }
+
+        $DependentTervisModuleNames |
         ForEach-Object { 
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
         }
@@ -86,7 +92,7 @@ $ScheduledScriptCommandsString
         Install-PowerShellApplicationScheduledTask -PathToScriptForScheduledTask $DirectoryLocal\Script.ps1 `
             -TaskName $SchduledTaskName `
             -Credential $ScheduledTasksCredential `
-            -RepetitionInterval $RepetitionInterval `
+            -RepetitionInterval $RepetitionIntervalName `
             -ComputerName $ComputerName
     }
 }

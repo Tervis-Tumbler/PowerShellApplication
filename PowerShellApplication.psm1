@@ -96,3 +96,58 @@ $ScheduledScriptCommandsString
             -ComputerName $ComputerName
     }
 }
+
+function Invoke-PowerShellApplicationDockerBuild {
+    param (
+        [Parameter(Mandatory)]$ModuleName,
+        $DependentTervisModuleNames,
+        [Parameter(Mandatory)][String]$CommandsString
+    )
+    $BuildDirectory = "$($env:TMPDIR)$($ModuleName)Docker"
+    New-Item -ItemType Directory -Path $BuildDirectory -ErrorAction SilentlyContinue
+    
+    $PSDependInputObject =  @{
+        PSDependOptions = @{
+            Target = $DirectoryRemote
+        }
+    }
+
+    $ModuleName |
+    ForEach-Object { 
+        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+    }
+
+    $DependentTervisModuleNames |
+    ForEach-Object { 
+        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+    }
+    
+    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+
+    Push-Location -Path $BuildDirectory
+
+@"
+**/.git
+**/.vscode
+"@ | Out-File -Encoding ascii -FilePath .dockerignore -Force
+
+@"
+FROM microsoft/powershell
+ENV TZ=America/New_York
+RUN echo `$TZ > /etc/timezone && \
+    apt-get update && apt-get install -y tzdata && \
+    rm /etc/localtime && \
+    ln -snf /usr/share/zoneinfo/`$TZ /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    apt-get clean
+COPY . /usr/local/share/powershell/Modules
+#ENTRYPOINT ["pwsh", "-Command", "$CommandsString" ]
+ENTRYPOINT ["pwsh"]
+"@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
+
+    docker build --no-cache -t $ModuleName .
+
+    Pop-Location
+
+    Remove-Item -Path $BuildDirectory -Recurse -Force
+}

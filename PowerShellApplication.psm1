@@ -46,7 +46,7 @@ function Install-PowerShellApplication {
         $DependentTervisModuleNames,
         [Parameter(Mandatory)][String]$ScheduledScriptCommandsString,
         [Parameter(Mandatory)]$ScheduledTasksCredential,
-        [Parameter(Mandatory)]$SchduledTaskName,
+        [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
         [Parameter(Mandatory)]
         [ValidateScript({ $_ | Get-RepetitionInterval })]
         $RepetitionIntervalName

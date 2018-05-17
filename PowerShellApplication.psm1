@@ -90,7 +90,7 @@ $ScheduledScriptCommandsString
         $OFS = $OFSBackup
 
         Install-PowerShellApplicationScheduledTask -PathToScriptForScheduledTask $DirectoryLocal\Script.ps1 `
-            -TaskName $SchduledTaskName `
+            -TaskName $ScheduledTaskName `
             -Credential $ScheduledTasksCredential `
             -RepetitionInterval $RepetitionIntervalName `
             -ComputerName $ComputerName

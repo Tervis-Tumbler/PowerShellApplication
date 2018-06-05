@@ -39,28 +39,34 @@ function Uninstall-PowerShellApplicationScheduledTask {
     Remove-Item $RemoteScriptFilePath
 }
 
-function Install-PowerShellApplication {
+function Get-PowerShellApplicationInstallDirectory {
+    param (
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$ModuleName
+    )
+    process {
+        $ProgramData = Invoke-Command -ComputerName $ComputerName -ScriptBlock { $env:ProgramData }
+        "$ProgramData\PowerShellApplication\$ModuleName"
+    }
+}
+
+function Install-PowerShellApplicationFiles {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$ModuleName,
         $DependentTervisModuleNames,
-        [Parameter(Mandatory)][String]$ScheduledScriptCommandsString,
-        [Parameter(Mandatory)]$ScheduledTasksCredential,
-        [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
-        [Parameter(Mandatory)]
-        [ValidateScript({ $_ | Get-RepetitionInterval })]
-        $RepetitionIntervalName
+        $CommandString
     )
     process {
-        $ProgramData = Invoke-Command -ComputerName $ComputerName -ScriptBlock { $env:ProgramData }
-        $DirectoryLocal = "$ProgramData\PowerShellApplication\$ModuleName"
-        $DirectoryRemote = $DirectoryLocal | ConvertTo-RemotePath -ComputerName $ComputerName
-        Remove-Item -Path $DirectoryRemote -ErrorAction SilentlyContinue -Recurse -Force
-        New-Item -ItemType Directory -Path $DirectoryRemote -ErrorAction SilentlyContinue
+        $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -ModuleName $ModuleName
+        $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
+
+        Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue -Recurse -Force
+        New-Item -ItemType Directory -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue
 
         $PSDependInputObject =  @{
             PSDependOptions = @{
-                Target = $DirectoryRemote
+                Target = $PowerShellApplicationInstallDirectoryRemote
             }
         }
 
@@ -78,16 +84,55 @@ function Install-PowerShellApplication {
         $OFSBackup = $OFS
         $OFS = ""
 @"
-Get-ChildItem -Path $DirectoryLocal -Directory | 
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Directory | 
 ForEach-Object {
     Import-Module -Name `$_.FullName -Force
 }
 
-$ScheduledScriptCommandsString
+$CommandsString
 "@ |
-        Out-File -FilePath $DirectoryRemote\Script.ps1
+        Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\Script.ps1
         
         $OFS = $OFSBackup
+    }
+}
+
+function Install-PowerShellApplicationUniversalDashboard {
+    param (
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$ModuleName,
+        $DependentTervisModuleNames,
+        $CommandString
+    )
+    process {
+        $Parameters = $PSBoundParameters
+        "ScheduledScriptCommandsString","ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
+        ForEach-Object {
+            $Parameters.Remove($_)
+        }
+        Install-PowerShellApplicationFiles @Parameters
+    }
+}
+
+function Install-PowerShellApplication {
+    param (
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$ModuleName,
+        $DependentTervisModuleNames,
+        [Parameter(Mandatory)][String]$ScheduledScriptCommandsString,
+        [Parameter(Mandatory)]$ScheduledTasksCredential,
+        [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
+        [Parameter(Mandatory)]
+        [ValidateScript({ $_ | Get-RepetitionInterval })]
+        $RepetitionIntervalName
+    )
+    process {
+        $Parameters = $PSBoundParameters
+        "ScheduledScriptCommandsString","ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
+        ForEach-Object {
+            $Parameters.Remove($_)
+        }
+        Install-PowerShellApplicationFiles @Parameters
 
         Install-PowerShellApplicationScheduledTask -PathToScriptForScheduledTask $DirectoryLocal\Script.ps1 `
             -TaskName $ScheduledTaskName `

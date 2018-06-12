@@ -64,7 +64,7 @@ function Install-PowerShellApplicationFiles {
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
         Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue -Recurse -Force
-        New-Item -ItemType Directory -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue | Out-Null
 
         $PSDependInputObject =  @{
             PSDependOptions = @{
@@ -76,28 +76,33 @@ function Install-PowerShellApplicationFiles {
         ForEach-Object {
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
         }
-
-        $TervisModuleDependencies |
-        ForEach-Object {
-            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-        }
- 
-        $PowerShellGalleryDependencies |
-        ForEach-Object { 
-            $PSDependInputObject.Add( $_, @{
-                DependencyType = "PSGalleryNuget"
-            }) 
+        if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
+            $TervisModuleDependencies |
+            ForEach-Object {
+                $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+            }
         }
 
-        $NugetDependencies |
-        ForEach-Object {
-            if ($_ -is [Hashtable]) {
-                $PSDependInputObject += $_    
-            } else {
+        if ($PowerShellGalleryDependencies) {
+            $PowerShellGalleryDependencies |
+            ForEach-Object {
+                
                 $PSDependInputObject.Add( $_, @{
-                    DependencyType = "Package"
-                    Parameters=@{ProviderName = "nuget"}
-                })
+                    DependencyType = "PSGalleryNuget"
+                }) 
+            }
+        }
+        if ($NugetDependencies) {
+            $NugetDependencies |
+            ForEach-Object {
+                if ($_ -is [Hashtable]) {
+                    $PSDependInputObject += $_    
+                } else {
+                    $PSDependInputObject.Add( $_, @{
+                        DependencyType = "Package"
+                        Parameters=@{ProviderName = "nuget"}
+                    })
+                }
             }
         }
     
@@ -108,6 +113,12 @@ function Install-PowerShellApplicationFiles {
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Directory | 
 ForEach-Object {
     Import-Module -Name `$_.FullName -Force
+}
+
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll | 
+Where-Object FullName -match netstandard2.0 |
+ForEach-Object {
+    Add-Type -Path $_.FullName
 }
 
 $CommandsString

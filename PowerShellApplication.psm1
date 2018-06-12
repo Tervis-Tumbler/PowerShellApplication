@@ -85,8 +85,20 @@ function Install-PowerShellApplicationFiles {
         $PowerShellGalleryDependencies |
         ForEach-Object { 
             $PSDependInputObject.Add( $_, @{
-                DependencyType = 'PSGalleryNuget'
+                DependencyType = "PSGalleryNuget"
             }) 
+        }
+
+        $NugetDependencies |
+        ForEach-Object {
+            if ($_ -is [Hashtable]) {
+                $PSDependInputObject += $_    
+            } else {
+                $PSDependInputObject.Add( $_, @{
+                    DependencyType = "Package"
+                    Parameters=@{ProviderName = "nuget"}
+                })
+            }
         }
     
         Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject

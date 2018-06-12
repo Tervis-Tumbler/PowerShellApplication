@@ -54,7 +54,9 @@ function Install-PowerShellApplicationFiles {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$ModuleName,
-        $DependentTervisModuleNames,
+        $TervisModuleDependencies,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies,
         $CommandString
     )
     process {
@@ -71,15 +73,22 @@ function Install-PowerShellApplicationFiles {
         }
 
         $ModuleName |
-        ForEach-Object { 
+        ForEach-Object {
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
         }
 
-        $DependentTervisModuleNames |
-        ForEach-Object { 
+        $TervisModuleDependencies |
+        ForEach-Object {
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
         }
-        
+ 
+        $PowerShellGalleryDependencies |
+        ForEach-Object { 
+            $PSDependInputObject.Add( $_, @{
+                DependencyType = 'PSGalleryNuget'
+            }) 
+        }
+    
         Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
         $OFSBackup = $OFS
         $OFS = ""
@@ -101,14 +110,16 @@ function Install-PowerShellApplicationUniversalDashboard {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$ModuleName,
-        $DependentTervisModuleNames,
+        $TervisModuleDependencies,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies,
         $CommandString
     )
     process {
         $Parameters = $PSBoundParameters
         "ScheduledScriptCommandsString","ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
         ForEach-Object {
-            $Parameters.Remove($_)
+            $Parameters.Remove($_) | Out-Null
         }
         Install-PowerShellApplicationFiles @Parameters
     }

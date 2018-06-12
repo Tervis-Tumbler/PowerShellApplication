@@ -110,9 +110,9 @@ function Install-PowerShellApplicationFiles {
         $OFSBackup = $OFS
         $OFS = ""
 @"
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Directory | 
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
 ForEach-Object {
-    Import-Module -Name `$_.FullName -Force
+    Import-Module -Name $_.FullName -Force
 }
 
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll | 

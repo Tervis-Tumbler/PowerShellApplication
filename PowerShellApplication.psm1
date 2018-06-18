@@ -115,7 +115,7 @@ ForEach-Object {
     Import-Module -Name `$_.FullName -Force
 }
 
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll | 
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
 Where-Object FullName -match netstandard2.0 |
 ForEach-Object {
     Add-Type -Path `$_.FullName

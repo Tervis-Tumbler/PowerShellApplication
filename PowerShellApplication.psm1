@@ -112,13 +112,13 @@ function Install-PowerShellApplicationFiles {
 @"
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
 ForEach-Object {
-    Import-Module -Name $_.FullName -Force
+    Import-Module -Name `$_.FullName -Force
 }
 
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll | 
 Where-Object FullName -match netstandard2.0 |
 ForEach-Object {
-    Add-Type -Path $_.FullName
+    Add-Type -Path `$_.FullName
 }
 
 $CommandsString

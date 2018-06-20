@@ -71,11 +71,25 @@ function Install-PowerShellApplicationFiles {
                 Target = $PowerShellApplicationInstallDirectoryRemote
             }
         }
+        
+        #if ($PowerShellGalleryDependencies) {
+        #    $PowerShellGalleryDependencies |
+        #    ForEach-Object {
+        #        #Work around bug where only one PSGalleryNuget dependencie type gets processed when multiple are provided
+        #        $PSDependInputObjectClone = $PSDependInputObject.Clone()
+        #        $PSDependInputObjectClone.Add( $_, @{
+        #            DependencyType = "PSGalleryNuget"
+        #        })
+#
+        #        Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectClone
+        #    }
+        #}
 
         $ModuleName |
         ForEach-Object {
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
         }
+
         if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
             $TervisModuleDependencies |
             ForEach-Object {
@@ -86,26 +100,34 @@ function Install-PowerShellApplicationFiles {
         if ($PowerShellGalleryDependencies) {
             $PowerShellGalleryDependencies |
             ForEach-Object {
-                
+
                 $PSDependInputObject.Add( $_, @{
                     DependencyType = "PSGalleryNuget"
-                }) 
+                })
             }
         }
+
         if ($NugetDependencies) {
             $NugetDependencies |
             ForEach-Object {
+                $PSDependInputObjectForNugetDependencies =  @{
+                    PSDependOptions = @{
+                        Target = $PowerShellApplicationInstallDirectoryRemote
+                    }
+                }
+                
                 if ($_ -is [Hashtable]) {
-                    $PSDependInputObject += $_    
+                    $PSDependInputObjectForNugetDependencies += $_    
                 } else {
-                    $PSDependInputObject.Add( $_, @{
+                    $PSDependInputObjectForNugetDependencies.Add( $_, @{
                         DependencyType = "Package"
                         Parameters=@{ProviderName = "nuget"}
                     })
                 }
+                Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectForNugetDependencies
             }
         }
-    
+
         Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
         $OFSBackup = $OFS
         $OFS = ""

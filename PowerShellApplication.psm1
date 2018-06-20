@@ -72,19 +72,6 @@ function Install-PowerShellApplicationFiles {
             }
         }
         
-        #if ($PowerShellGalleryDependencies) {
-        #    $PowerShellGalleryDependencies |
-        #    ForEach-Object {
-        #        #Work around bug where only one PSGalleryNuget dependencie type gets processed when multiple are provided
-        #        $PSDependInputObjectClone = $PSDependInputObject.Clone()
-        #        $PSDependInputObjectClone.Add( $_, @{
-        #            DependencyType = "PSGalleryNuget"
-        #        })
-#
-        #        Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectClone
-        #    }
-        #}
-
         $ModuleName |
         ForEach-Object {
             $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
@@ -129,21 +116,31 @@ function Install-PowerShellApplicationFiles {
         }
 
         Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+
+        $LoadPowerShellModulesScriptBlock = {
+            Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
+            ForEach-Object {
+                Import-Module -Name $_.FullName -Force
+            }
+        }
+        $LoadNugetDependenciesScriptBlock = if ($NugetDependencies) {
+            {
+                Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
+                Where-Object FullName -match netstandard2.0 |
+                ForEach-Object {
+                    Add-Type -Path $_.FullName
+                }
+            }
+        }
+
         $OFSBackup = $OFS
         $OFS = ""
 @"
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
-ForEach-Object {
-    Import-Module -Name `$_.FullName -Force
-}
+$($LoadPowerShellModulesScriptBlock.ToString())
 
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
-Where-Object FullName -match netstandard2.0 |
-ForEach-Object {
-    Add-Type -Path `$_.FullName
-}
+$($LoadNugetDependenciesScriptBlock.ToString())
 
-$CommandsString
+$CommandString
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\Script.ps1
         

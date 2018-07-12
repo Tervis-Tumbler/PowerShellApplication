@@ -144,9 +144,13 @@ function Install-PowerShellApplicationFiles {
         $OFSBackup = $OFS
         $OFS = ""
 @"
-$($LoadPowerShellModulesScriptBlock.ToString())
+$(if ($LoadPowerShellModulesScriptBlock) {
+    $LoadPowerShellModulesScriptBlock.ToString()
+})
 
-$($LoadNugetDependenciesScriptBlock.ToString())
+$(if ($LoadNugetDependenciesScriptBlock){
+    $LoadNugetDependenciesScriptBlock.ToString()
+})
 
 $($ScriptBlock.ToString())
 "@ |
@@ -188,7 +192,7 @@ function Install-PowerShellApplication {
         $Parameters = $PSBoundParameters
         "ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
         ForEach-Object {
-            $Parameters.Remove($_)
+            $Parameters.Remove($_) | Out-Null
         }
         Install-PowerShellApplicationFiles @Parameters
 

@@ -116,7 +116,7 @@ function Install-PowerShellApplicationFiles {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        [ScriptBlock]$ScriptBlock,
+        [String]$CommandString,
         $ScriptFileName = "Script.ps1"
     )
     process {
@@ -125,34 +125,32 @@ function Install-PowerShellApplicationFiles {
 
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote
 
-        $LoadPowerShellModulesScriptBlock = {
+        $LoadPowerShellModulesCommandString = @"
             Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
             ForEach-Object {
-                Import-Module -Name $_.FullName -Force
+                Import-Module -Name `$_.FullName -Force
             }
-        }
-        $LoadNugetDependenciesScriptBlock = if ($NugetDependencies) {
-            {
+"@
+        $LoadNugetDependenciesCommandString = if ($NugetDependencies) {
+            @"
                 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
                 Where-Object FullName -match netstandard2.0 |
                 ForEach-Object {
-                    Add-Type -Path $_.FullName
+                    Add-Type -Path `$_.FullName
                 }
-            }
+"@
         }
 
         $OFSBackup = $OFS
         $OFS = ""
 @"
-$(if ($LoadPowerShellModulesScriptBlock) {
-    $LoadPowerShellModulesScriptBlock.ToString()
+$($LoadPowerShellModulesCommandString.ToString())
+
+$(if ($LoadNugetDependenciesCommandString){
+    $LoadNugetDependenciesCommandString.ToString()
 })
 
-$(if ($LoadNugetDependenciesScriptBlock){
-    $LoadNugetDependenciesScriptBlock.ToString()
-})
-
-$($ScriptBlock.ToString())
+$CommandString
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
         
@@ -167,7 +165,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        $ScriptBlock
+        $CommandString
     )
     process {
         Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
@@ -181,7 +179,7 @@ function Install-PowerShellApplication {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        [Parameter(Mandatory)][Scriptblock]$ScriptBlock,
+        [Parameter(Mandatory)][String]$CommandString,
         [Parameter(Mandatory)]$ScheduledTasksCredential,
         [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
         [Parameter(Mandatory)]

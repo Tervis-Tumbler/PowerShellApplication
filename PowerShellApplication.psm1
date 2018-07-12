@@ -50,6 +50,65 @@ function Get-PowerShellApplicationInstallDirectory {
     }
 }
 
+function Invoke-PowerShellApplicationPSDepend {
+    param (
+        $Path
+    )
+    Remove-Item -Path $Path -ErrorAction SilentlyContinue -Recurse -Force
+    New-Item -ItemType Directory -Path $Path -ErrorAction SilentlyContinue | Out-Null
+
+    $PSDependInputObject =  @{
+        PSDependOptions = @{
+            Target = $Path
+        }
+    }
+    
+    $ModuleName |
+    ForEach-Object {
+        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+    }
+
+    if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
+        $TervisModuleDependencies |
+        ForEach-Object {
+            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+        }
+    }
+
+    if ($PowerShellGalleryDependencies) {
+        $PowerShellGalleryDependencies |
+        ForEach-Object {
+
+            $PSDependInputObject.Add( $_, @{
+                DependencyType = "PSGalleryNuget"
+            })
+        }
+    }
+
+    if ($NugetDependencies) {
+        $NugetDependencies |
+        ForEach-Object {
+            $PSDependInputObjectForNugetDependencies =  @{
+                PSDependOptions = @{
+                    Target = $PowerShellApplicationInstallDirectoryRemote
+                }
+            }
+            
+            if ($_ -is [Hashtable]) {
+                $PSDependInputObjectForNugetDependencies += $_    
+            } else {
+                $PSDependInputObjectForNugetDependencies.Add( $_, @{
+                    DependencyType = "Package"
+                    Parameters=@{ProviderName = "nuget"}
+                })
+            }
+            Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectForNugetDependencies
+        }
+    }
+
+    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+}
+
 function Install-PowerShellApplicationFiles {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
@@ -57,65 +116,14 @@ function Install-PowerShellApplicationFiles {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        $CommandString
+        $CommandString,
+        $ScriptFileName = "Script.ps1"
     )
     process {
         $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -ModuleName $ModuleName
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
-        Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue -Recurse -Force
-        New-Item -ItemType Directory -Path $PowerShellApplicationInstallDirectoryRemote -ErrorAction SilentlyContinue | Out-Null
-
-        $PSDependInputObject =  @{
-            PSDependOptions = @{
-                Target = $PowerShellApplicationInstallDirectoryRemote
-            }
-        }
-        
-        $ModuleName |
-        ForEach-Object {
-            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-        }
-
-        if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
-            $TervisModuleDependencies |
-            ForEach-Object {
-                $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-            }
-        }
-
-        if ($PowerShellGalleryDependencies) {
-            $PowerShellGalleryDependencies |
-            ForEach-Object {
-
-                $PSDependInputObject.Add( $_, @{
-                    DependencyType = "PSGalleryNuget"
-                })
-            }
-        }
-
-        if ($NugetDependencies) {
-            $NugetDependencies |
-            ForEach-Object {
-                $PSDependInputObjectForNugetDependencies =  @{
-                    PSDependOptions = @{
-                        Target = $PowerShellApplicationInstallDirectoryRemote
-                    }
-                }
-                
-                if ($_ -is [Hashtable]) {
-                    $PSDependInputObjectForNugetDependencies += $_    
-                } else {
-                    $PSDependInputObjectForNugetDependencies.Add( $_, @{
-                        DependencyType = "Package"
-                        Parameters=@{ProviderName = "nuget"}
-                    })
-                }
-                Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectForNugetDependencies
-            }
-        }
-
-        Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+        Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote
 
         $LoadPowerShellModulesScriptBlock = {
             Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
@@ -142,7 +150,7 @@ $($LoadNugetDependenciesScriptBlock.ToString())
 
 $CommandString
 "@ |
-        Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\Script.ps1
+        Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
         
         $OFS = $OFSBackup
     }
@@ -158,12 +166,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         $CommandString
     )
     process {
-        $Parameters = $PSBoundParameters
-        "ScheduledScriptCommandsString","ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
-        ForEach-Object {
-            $Parameters.Remove($_) | Out-Null
-        }
-        Install-PowerShellApplicationFiles @Parameters
+        Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
     }
 }
 
@@ -172,6 +175,8 @@ function Install-PowerShellApplication {
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$ModuleName,
         $DependentTervisModuleNames,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies,
         [Parameter(Mandatory)][String]$ScheduledScriptCommandsString,
         [Parameter(Mandatory)]$ScheduledTasksCredential,
         [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
@@ -201,6 +206,7 @@ function Invoke-PowerShellApplicationDockerBuild {
         $DependentTervisModuleNames,
         [Parameter(Mandatory)][String]$CommandsString
     )
+    Install-PowerShellApplicationFiles 
     $BuildDirectory = "$($env:TMPDIR)$($ModuleName)Docker"
     New-Item -ItemType Directory -Path $BuildDirectory -ErrorAction SilentlyContinue
     

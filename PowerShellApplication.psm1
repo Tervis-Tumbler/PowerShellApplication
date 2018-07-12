@@ -116,7 +116,7 @@ function Install-PowerShellApplicationFiles {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        $CommandString,
+        [ScriptBlock]$ScriptBlock,
         $ScriptFileName = "Script.ps1"
     )
     process {
@@ -148,7 +148,7 @@ $($LoadPowerShellModulesScriptBlock.ToString())
 
 $($LoadNugetDependenciesScriptBlock.ToString())
 
-$CommandString
+$($ScriptBlock.ToString())
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
         
@@ -163,7 +163,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        $CommandString
+        $ScriptBlock
     )
     process {
         Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
@@ -174,10 +174,10 @@ function Install-PowerShellApplication {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$ModuleName,
-        $DependentTervisModuleNames,
+        $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        [Parameter(Mandatory)][String]$ScheduledScriptCommandsString,
+        [Parameter(Mandatory)][Scriptblock]$ScriptBlock,
         [Parameter(Mandatory)]$ScheduledTasksCredential,
         [Parameter(Mandatory)][Alias("SchduledTaskName")]$ScheduledTaskName,
         [Parameter(Mandatory)]
@@ -186,7 +186,7 @@ function Install-PowerShellApplication {
     )
     process {
         $Parameters = $PSBoundParameters
-        "ScheduledScriptCommandsString","ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
+        "ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
         ForEach-Object {
             $Parameters.Remove($_)
         }

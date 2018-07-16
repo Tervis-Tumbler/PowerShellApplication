@@ -164,6 +164,7 @@ $CommandString
 function Install-PowerShellApplicationUniversalDashboard {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,

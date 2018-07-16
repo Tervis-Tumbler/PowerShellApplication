@@ -42,11 +42,12 @@ function Uninstall-PowerShellApplicationScheduledTask {
 function Get-PowerShellApplicationInstallDirectory {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName
     )
     process {
         $ProgramData = Invoke-Command -ComputerName $ComputerName -ScriptBlock { $env:ProgramData }
-        "$ProgramData\PowerShellApplication\$ModuleName"
+        "$ProgramData\PowerShellApplication\$EnvironmentName\$ModuleName"
     }
 }
 
@@ -112,6 +113,7 @@ function Invoke-PowerShellApplicationPSDepend {
 function Install-PowerShellApplicationFiles {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
@@ -120,7 +122,7 @@ function Install-PowerShellApplicationFiles {
         $ScriptFileName = "Script.ps1"
     )
     process {
-        $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -ModuleName $ModuleName
+        $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote
@@ -175,6 +177,7 @@ function Install-PowerShellApplicationUniversalDashboard {
 function Install-PowerShellApplication {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
@@ -195,7 +198,7 @@ function Install-PowerShellApplication {
         Install-PowerShellApplicationFiles @Parameters
 
         Install-PowerShellApplicationScheduledTask -PathToScriptForScheduledTask $DirectoryLocal\Script.ps1 `
-            -TaskName $ScheduledTaskName `
+            -TaskName "$ScheduledTaskName $EnvironmentName" `
             -Credential $ScheduledTasksCredential `
             -RepetitionInterval $RepetitionIntervalName `
             -ComputerName $ComputerName

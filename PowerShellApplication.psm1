@@ -28,15 +28,16 @@ function Install-PowerShellApplicationScheduledTask {
 
 function Uninstall-PowerShellApplicationScheduledTask {
     param (
-        $PathToScriptForScheduledTask = $PSScriptRoot,
-        [Parameter(Mandatory)]$FunctionName,
-        $ComputerName = $env:COMPUTERNAME
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
+        [Parameter(Mandatory)]$ModuleName,
+        [Parameter(Mandatory)]$ScheduledTaskName
     )
-    Uninstall-TervisScheduledTask -TaskName $FunctionName -ComputerName $ComputerName
-
-    $ScriptFilePath = "$PathToScriptForScheduledTask\$FunctionName.ps1"
-    $RemoteScriptFilePath = ConvertTo-RemotePath -Path $ScriptFilePath -ComputerName $ComputerName
+    $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory @PSBoundParameters
+    $RemoteScriptFilePath = ConvertTo-RemotePath -Path $PowerShellApplicationInstallDirectory -ComputerName $ComputerName
     Remove-Item $RemoteScriptFilePath
+
+    Uninstall-TervisScheduledTask -TaskName "$ScheduledTaskName $EnvironmentName" -ComputerName $ComputerName
 }
 
 function Get-PowerShellApplicationInstallDirectory {

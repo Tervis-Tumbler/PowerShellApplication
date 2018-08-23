@@ -104,11 +104,11 @@ function Invoke-PowerShellApplicationPSDepend {
                     Parameters=@{ProviderName = "nuget"}
                 })
             }
-            Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectForNugetDependencies
+            Invoke-PSDepend -Force -Install -InputObject $PSDependInputObjectForNugetDependencies | Out-Null
         }
     }
 
-    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject | Out-Null
 }
 
 function Install-PowerShellApplicationFiles {
@@ -159,6 +159,8 @@ $CommandString
         
         $OFS = $OFSBackup
     }
+
+    [PSCustomObject]@{PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectoryRemote}
 }
 
 function Install-PowerShellApplicationUniversalDashboard {

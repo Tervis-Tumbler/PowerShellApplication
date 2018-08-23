@@ -158,9 +158,8 @@ $CommandString
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
         
         $OFS = $OFSBackup
+        [PSCustomObject]@{PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectoryRemote}
     }
-
-    [PSCustomObject]@{PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectoryRemote}
 }
 
 function Install-PowerShellApplicationUniversalDashboard {

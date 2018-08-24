@@ -129,18 +129,18 @@ function Install-PowerShellApplicationFiles {
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote
 
         $LoadPowerShellModulesCommandString = @"
-            Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
-            ForEach-Object {
-                Import-Module -Name `$_.FullName -Force
-            }
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
+ForEach-Object {
+    Import-Module -Name `$_.FullName -Force
+}
 "@
         $LoadNugetDependenciesCommandString = if ($NugetDependencies) {
             @"
-                Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
-                Where-Object FullName -match netstandard2.0 |
-                ForEach-Object {
-                    Add-Type -Path `$_.FullName
-                }
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
+Where-Object FullName -match netstandard2.0 |
+ForEach-Object {
+    Add-Type -Path `$_.FullName
+}
 "@
         }
 
@@ -183,6 +183,7 @@ function Install-PowerShellApplicationUniversalDashboard {
             $PSBoundParameters.CommandString = @"
 Set-PasswordstateAPIKey -APIKey $DashboardPassswordstateAPIKey
 Set-PasswordstateAPIType -APIType Standard
+
 "@ + $CommandString
         }
 

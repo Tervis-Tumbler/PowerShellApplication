@@ -175,7 +175,8 @@ function Install-PowerShellApplicationUniversalDashboard {
         $NugetDependencies,
         $CommandString,
         [Switch]$UseTLS,
-        $DashboardPassswordstateAPIKey
+        $DashboardPassswordstateAPIKey,
+        [Parameter(Mandatory)]$Port
     )
     process {
         if ($DashboardPassswordstateAPIKey) {
@@ -193,8 +194,9 @@ Set-PasswordstateAPIType -APIType Standard
         $Local = $Result.PowerShellApplicationInstallDirectory
     
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-            nssm install $ModuleName powershell.exe -file "$Using:Local\Dashboard.ps1"
-            nssm set $ModuleName AppDirectory $Using:Local
+            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Dashboard.ps1"
+            nssm set $Using:ModuleName AppDirectory $Using:Local
+            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {

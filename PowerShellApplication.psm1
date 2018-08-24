@@ -174,7 +174,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         $CommandString,
-        $UseTLS,
+        [Switch]$UseTLS,
         $DashboardPassswordstateAPIKey
     )
     process {
@@ -187,7 +187,7 @@ Set-PasswordstateAPIType -APIType Standard
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
         ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, DashboardPassswordstateAPIKey
-        
+
         $Result = Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
         $Local = $Result.PowerShellApplicationInstallDirectory

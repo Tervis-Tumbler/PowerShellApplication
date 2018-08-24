@@ -187,9 +187,9 @@ Set-PasswordstateAPIType -APIType Standard
         }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, DashboardPassswordstateAPIKey
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, DashboardPassswordstateAPIKey -AsHashTable
 
-        $Result = Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
+        $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Dashboard.ps1
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
         $Local = $Result.PowerShellApplicationInstallDirectory
     

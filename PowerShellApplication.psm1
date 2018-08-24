@@ -173,10 +173,33 @@ function Install-PowerShellApplicationUniversalDashboard {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
-        $CommandString
+        $CommandString,
+        $UseTLS,
+        $DashboardPassswordstateAPIKey
     )
     process {
-        Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
+        if ($DashboardPassswordstateAPIKey) {
+            $PSBoundParameters.CommandString = @"
+Set-PasswordstateAPIKey -APIKey $DashboardPassswordstateAPIKey
+Set-PasswordstateAPIType -APIType Standard
+"@ + $CommandString
+        }
+
+        $PowerShellApplicationFilesParameters = $PSBoundParameters |
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, DashboardPassswordstateAPIKey
+        
+        $Result = Install-PowerShellApplicationFiles @PSBoundParameters -ScriptFileName Dashboard.ps1
+        $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
+        $Local = $Result.PowerShellApplicationInstallDirectory
+    
+        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            nssm install $ModuleName powershell.exe -file "$Using:Local\Dashboard.ps1"
+            nssm set $ModuleName AppDirectory $Using:Local
+        }
+
+        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
+            Get-PasswordstateDocument -DocumentID 11 -OutFile "$Remote\certificate.pfx" -DocumentLocation password
+        }
     }
 }
 

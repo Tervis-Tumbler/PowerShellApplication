@@ -158,7 +158,10 @@ $CommandString
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
         
         $OFS = $OFSBackup
-        [PSCustomObject]@{PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectoryRemote}
+        [PSCustomObject]@{
+            PowerShellApplicationInstallDirectory = $PowerShellApplicationInstallDirectory
+            PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectoryRemote
+        }
     }
 }
 

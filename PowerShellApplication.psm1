@@ -54,7 +54,11 @@ function Get-PowerShellApplicationInstallDirectory {
 
 function Invoke-PowerShellApplicationPSDepend {
     param (
-        $Path
+        $Path,
+        $ModuleName,
+        $TervisModuleDependencies,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies
     )
     Remove-Item -Path $Path -ErrorAction SilentlyContinue -Recurse -Force
     New-Item -ItemType Directory -Path $Path -ErrorAction SilentlyContinue | Out-Null
@@ -126,7 +130,10 @@ function Install-PowerShellApplicationFiles {
         $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
-        Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote
+        $PowerShellApplicationPSDependParameters = $PSBoundParameters |
+        ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, PowerShellGalleryDependencies, NugetDependencies -AsHashTable
+
+        Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
 
         $LoadPowerShellModulesCommandString = @"
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |

@@ -58,7 +58,8 @@ function Invoke-PowerShellApplicationPSDepend {
         $ModuleName,
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
-        $NugetDependencies
+        $NugetDependencies,
+        $PowerShellNugetDependencies
     )
     Remove-Item -Path $Path -ErrorAction SilentlyContinue -Recurse -Force
     New-Item -ItemType Directory -Path $Path -ErrorAction SilentlyContinue | Out-Null
@@ -84,10 +85,7 @@ function Invoke-PowerShellApplicationPSDepend {
     if ($PowerShellGalleryDependencies) {
         $PowerShellGalleryDependencies |
         ForEach-Object {
-
-            $PSDependInputObject.Add( $_, @{
-                DependencyType = "PSGalleryNuget"
-            })
+            Save-Module -Name $_ -Path $Path
         }
     }
 
@@ -96,7 +94,7 @@ function Invoke-PowerShellApplicationPSDepend {
         ForEach-Object {
             $PSDependInputObjectForNugetDependencies =  @{
                 PSDependOptions = @{
-                    Target = $PowerShellApplicationInstallDirectoryRemote
+                    Target = $Path
                 }
             }
             
@@ -112,6 +110,17 @@ function Invoke-PowerShellApplicationPSDepend {
         }
     }
 
+    if ($PowerShellNugetDependencies) {
+        $PowerShellNugetDependencies |
+        ForEach-Object -Begin {
+            Register-PackageSource -Location https://www.nuget.org/api/v2 -name TemporaryNuget.org -Trusted -ProviderName NuGet | Out-Null
+        } -Process {            
+            Install-Package -Destination $Path -Source TemporaryNuget.org @_ | Out-Null
+        } -End {
+            UnRegister-PackageSource -Source TemporaryNuget.org | Out-Null
+        }
+    }
+
     Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject | Out-Null
 }
 
@@ -123,6 +132,7 @@ function Install-PowerShellApplicationFiles {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
+        $PowerShellNugetDependencies,
         [String]$CommandString,
         $ScriptFileName = "Script.ps1"
     )
@@ -131,7 +141,7 @@ function Install-PowerShellApplicationFiles {
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, PowerShellGalleryDependencies, NugetDependencies -AsHashTable
+        ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
 
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
 
@@ -141,7 +151,7 @@ ForEach-Object {
     Import-Module -Name `$_.FullName -Force
 }
 "@
-        $LoadNugetDependenciesCommandString = if ($NugetDependencies) {
+        $LoadNugetDependenciesCommandString = if ($NugetDependencies -or $PowerShellNugetDependencies) {
             @"
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
 Where-Object FullName -match netstandard2.0 |
@@ -180,6 +190,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         $TervisModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
+        $PowerShellNugetDependencies,
         $CommandString,
         [Switch]$UseTLS,
         $DashboardPassswordstateAPIKey,

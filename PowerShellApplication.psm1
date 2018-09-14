@@ -146,9 +146,19 @@ function Install-PowerShellApplicationFiles {
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
 
         $LoadPowerShellModulesCommandString = @"
+`$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")"
+`$TervisModules = `$TervisModulesArrayAsString -split ","
+`$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies -join ",")"
+`$PowershellGalleryModules = `$PowershellGalleryModulesArrayAsString -split ","
+
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
 ForEach-Object {
-    Import-Module -Name `$_.FullName -Force
+    if(`$_.BaseName -notin `$PowershellGalleryModules){
+        Import-Module -Name `$_.FullName -Force
+    }
+}
+`$PowershellGalleryModules | ForEach-Object {
+    Import-Module -Name "$PowerShellApplicationInstallDirectory\`$_"
 }
 "@
         $LoadNugetDependenciesCommandString = if ($NugetDependencies -or $PowerShellNugetDependencies) {

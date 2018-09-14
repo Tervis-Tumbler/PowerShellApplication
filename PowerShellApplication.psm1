@@ -33,9 +33,11 @@ function Uninstall-PowerShellApplicationScheduledTask {
         [Parameter(Mandatory)]$ModuleName,
         [Parameter(Mandatory)]$ScheduledTaskName
     )
+#    $Parameters = $PSBoundParameters
+    $PSBoundParameters.Remove("ScheduledTaskName") | Out-Null
     $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory @PSBoundParameters
     $RemoteScriptFilePath = ConvertTo-RemotePath -Path $PowerShellApplicationInstallDirectory -ComputerName $ComputerName
-    Remove-Item $RemoteScriptFilePath
+    Remove-Item $RemoteScriptFilePath -Recurse
 
     Uninstall-TervisScheduledTask -TaskName "$ScheduledTaskName $EnvironmentName" -ComputerName $ComputerName
 }
@@ -154,7 +156,7 @@ function Install-PowerShellApplicationFiles {
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
 ForEach-Object {
     if(`$_.BaseName -notin `$PowershellGalleryModules){
-        Import-Module -Name `$_.FullName -Force
+        Import-Module -Name `$_.Directory -Force
     }
 }
 `$PowershellGalleryModules | ForEach-Object {

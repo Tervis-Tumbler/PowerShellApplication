@@ -26,7 +26,7 @@ function Install-PowerShellApplicationScheduledTask {
     }
 }
 
-function Uninstall-PowerShellApplicationScheduledTask {
+function Uninstall-PowerShellApplication {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$EnvironmentName,

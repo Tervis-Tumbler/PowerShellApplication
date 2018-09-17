@@ -257,7 +257,8 @@ function Install-PowerShellApplication {
         ForEach-Object {
             $Parameters.Remove($_) | Out-Null
         }
-        Install-PowerShellApplicationFiles @Parameters
+        $InstallLocations = Install-PowerShellApplicationFiles @Parameters
+        $DirectoryLocal = $InstallLocations.PowerShellApplicationInstallDirectory
 
         Install-PowerShellApplicationScheduledTask -PathToScriptForScheduledTask $DirectoryLocal\Script.ps1 `
             -TaskName "$ScheduledTaskName $EnvironmentName" `

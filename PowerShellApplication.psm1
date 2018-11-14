@@ -151,7 +151,12 @@ function Install-PowerShellApplicationFiles {
 `$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies -join ",")"
-`$PowershellGalleryModules = `$PowershellGalleryModulesArrayAsString -split ","
+if(`$PowershellGalleryModulesArrayAsString){
+    `$PowershellGalleryModules = `$PowershellGalleryModulesArrayAsString -split ","
+}
+else{
+    `$PowershellGalleryModules = @()
+}
 
 Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
 ForEach-Object {

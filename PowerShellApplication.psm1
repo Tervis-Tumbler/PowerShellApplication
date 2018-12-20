@@ -210,20 +210,20 @@ function Install-PowerShellApplicationUniversalDashboard {
         $PowerShellNugetDependencies,
         $CommandString,
         [Switch]$UseTLS,
-        $DashboardPassswordstateAPIKey,
+        $PassswordstateAPIKey,
         [Parameter(Mandatory)]$Port
     )
     process {
-        if ($DashboardPassswordstateAPIKey) {
+        if ($PassswordstateAPIKey) {
             $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $DashboardPassswordstateAPIKey
+Set-PasswordstateAPIKey -APIKey $PassswordstateAPIKey
 Set-PasswordstateAPIType -APIType Standard
 
 "@ + $CommandString
         }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, DashboardPassswordstateAPIKey, Port -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Port -AsHashTable
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Dashboard.ps1
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
@@ -240,6 +240,60 @@ Set-PasswordstateAPIType -APIType Standard
         }
     }
 }
+
+function Install-PowerShellApplicationPolaris {
+    param (
+        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory)]$EnvironmentName,
+        [Parameter(Mandatory)]$ModuleName,
+        $TervisModuleDependencies,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies,
+        $PowerShellNugetDependencies,
+        $CommandString,
+        [Switch]$UseTLS,
+        $PassswordstateAPIKey,
+        [Parameter(Mandatory)]$Port
+    )
+    process {
+        if ($PassswordstateAPIKey) {
+            $PSBoundParameters.CommandString = @"
+Set-PasswordstateAPIKey -APIKey $PassswordstateAPIKey
+Set-PasswordstateAPIType -APIType Standard
+
+"@ + $CommandString
+        }
+
+        $PowerShellApplicationFilesParameters = $PSBoundParameters |
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Port -AsHashTable
+
+        $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Polaris.ps1
+        $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
+        $Local = $Result.PowerShellApplicationInstallDirectory
+    
+        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Polaris.ps1"
+            nssm set $Using:ModuleName AppDirectory $Using:Local
+            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP
+        }
+
+        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
+            Get-PasswordstateDocument -DocumentID 11 -OutFile "$Remote\certificate.pfx" -DocumentLocation password
+            $CertificatePassword = Get-TervisPasswordstatePassword -Guid 49d35824-dcce-4fc1-98ff-ebb7ecc971de | 
+            Select-Object -ExpandProperty Password |
+            ConvertTo-SecureString -AsPlainText -Force
+
+            Invoke-Command -ComputerName $ComputerName -ScriptBlock {                
+                $CertificateImport = Import-PfxCertificate -FilePath "$Using:Local\Certificate.pfx" -CertStoreLocation Cert:\LocalMachine\My -Password $Using:CertificatePassword
+                
+                $GUID = New-GUID | Select-Object -ExpandProperty GUID
+                Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Using:Port" -CertificateStoreName My -NullEncryption:$false
+
+            }
+        }
+    }
+}
+
 
 function Install-PowerShellApplication {
     param (

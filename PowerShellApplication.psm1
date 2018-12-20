@@ -72,11 +72,6 @@ function Invoke-PowerShellApplicationPSDepend {
             Target = $Path
         }
     }
-    
-    $ModuleName |
-    ForEach-Object {
-        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-    }
 
     if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
         $TervisModuleDependencies |

@@ -59,6 +59,7 @@ function Invoke-PowerShellApplicationPSDepend {
         $Path,
         $ModuleName,
         $TervisModuleDependencies,
+        $TervisAzureDevopsModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         $PowerShellNugetDependencies
@@ -80,7 +81,14 @@ function Invoke-PowerShellApplicationPSDepend {
     if ($TervisModuleDependencies) {#Needed due to https://github.com/PowerShell/PowerShell/issues/7049
         $TervisModuleDependencies |
         ForEach-Object {
-            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
+            $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master")
+        }
+    }
+
+    if ($TervisAzureDevopsModuleDependencies) {
+        $TervisAzureDevopsModuleDependencies |
+        ForEach-Object {
+            $PSDependInputObject.Add( "https://tervis.visualstudio.com/PowerShell/_git/$_", "master")
         }
     }
 
@@ -132,6 +140,7 @@ function Install-PowerShellApplicationFiles {
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
+        $TervisAzureDevopsModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         $PowerShellNugetDependencies,
@@ -143,7 +152,7 @@ function Install-PowerShellApplicationFiles {
         $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
 
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
+        ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, TervisAzureDevopsModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
 
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
 
@@ -205,6 +214,7 @@ function Install-PowerShellApplicationUniversalDashboard {
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
+        $TervisAzureDevopsModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         $PowerShellNugetDependencies,
@@ -247,6 +257,7 @@ function Install-PowerShellApplicationPolaris {
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
+        $TervisAzureDevopsModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         $PowerShellNugetDependencies,
@@ -301,6 +312,7 @@ function Install-PowerShellApplication {
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
+        $TervisAzureDevopsModuleDependencies,
         $PowerShellGalleryDependencies,
         $NugetDependencies,
         [Parameter(Mandatory)][String]$CommandString,

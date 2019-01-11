@@ -284,7 +284,7 @@ Set-PasswordstateAPIType -APIType Standard
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type PFX -OutPath $Remote
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
             $CertificatePassword = Get-TervisPasswordSateTervisDotComWildCardCertificatePassword
 
             Invoke-Command -ComputerName $ComputerName -ScriptBlock {                

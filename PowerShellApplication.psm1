@@ -284,17 +284,14 @@ Set-PasswordstateAPIType -APIType Standard
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-PasswordstateDocument -DocumentID 11 -OutFile "$Remote\certificate.pfx" -DocumentLocation password
-            $CertificatePassword = Get-TervisPasswordstatePassword -Guid 49d35824-dcce-4fc1-98ff-ebb7ecc971de | 
-            Select-Object -ExpandProperty Password |
-            ConvertTo-SecureString -AsPlainText -Force
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type PFX -OutPath $Remote
+            $CertificatePassword = Get-TervisPasswordSateTervisDotComWildCardCertificatePassword
 
             Invoke-Command -ComputerName $ComputerName -ScriptBlock {                
                 $CertificateImport = Import-PfxCertificate -FilePath "$Using:Local\Certificate.pfx" -CertStoreLocation Cert:\LocalMachine\My -Password $Using:CertificatePassword
                 
                 $GUID = New-GUID | Select-Object -ExpandProperty GUID
                 Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Using:Port" -CertificateStoreName My -NullEncryption:$false
-
             }
         }
     }

@@ -140,6 +140,7 @@ function Install-PowerShellApplicationFiles {
         $NugetDependencies,
         $PowerShellNugetDependencies,
         [String]$CommandString,
+        [String]$ParamBlock,
         $ScriptFileName = "Script.ps1"
     )
     process {
@@ -185,6 +186,7 @@ ForEach-Object {
         $OFSBackup = $OFS
         $OFS = ""
 @"
+$($ParamBlock.ToString())
 $($LoadPowerShellModulesCommandString.ToString())
 
 $(if ($LoadNugetDependenciesCommandString){
@@ -259,7 +261,7 @@ function Install-PowerShellApplicationPolaris {
         $CommandString,
         [Switch]$UseTLS,
         $PassswordstateAPIKey,
-        [Parameter(Mandatory)]$Port
+        [Parameter(Mandatory)]$Ports
     )
     process {
         if ($PassswordstateAPIKey) {
@@ -271,16 +273,23 @@ Set-PasswordstateAPIType -APIType Standard
         }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Port -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Ports -AsHashTable
 
-        $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Polaris.ps1
+        $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Polaris.ps1 -ParamBlock @"
+param (
+    `$Port
+)
+"@
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
         $Local = $Result.PowerShellApplicationInstallDirectory
     
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Polaris.ps1"
-            nssm set $Using:ModuleName AppDirectory $Using:Local
-            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP
+            foreach ($Port in $Using:Ports) {
+                $ServiceName = "$Using:ModuleName $Port"
+                nssm install $ServiceName powershell.exe -file "$Using:Local\Polaris.ps1 -Port $Port"
+                nssm set $ServiceName AppDirectory $Using:Local    
+                New-NetFirewallRule -Name $ServiceName -Profile Any -Direction Inbound -Action Allow -LocalPort $Port -DisplayName $ServiceName -Protocol TCP
+            }
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
@@ -290,8 +299,10 @@ Set-PasswordstateAPIType -APIType Standard
             Invoke-Command -ComputerName $ComputerName -ScriptBlock {                
                 $CertificateImport = Import-PfxCertificate -FilePath "$Using:Local\Certificate.pfx" -CertStoreLocation Cert:\LocalMachine\My -Password $Using:CertificatePassword
                 
-                $GUID = New-GUID | Select-Object -ExpandProperty GUID
-                Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Using:Port" -CertificateStoreName My -NullEncryption:$false
+                foreach ($Port in $Using:Ports) {
+                    $GUID = New-GUID | Select-Object -ExpandProperty GUID
+                    Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Port" -CertificateStoreName My -NullEncryption:$false
+                }
             }
         }
     }

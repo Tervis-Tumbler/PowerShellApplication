@@ -1,4 +1,4 @@
-﻿#requires -module TervisScheduledTasks
+﻿#requires -module TervisScheduledTasks, PSDepend
 
 function Install-PowerShellApplicationScheduledTask {
     param (

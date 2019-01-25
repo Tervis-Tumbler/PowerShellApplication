@@ -301,7 +301,9 @@ param (
                 
                 foreach ($Port in $Using:Ports) {
                     $GUID = New-GUID | Select-Object -ExpandProperty GUID
-                    Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Port" -CertificateStoreName My -NullEncryption:$false
+                    netsh http add sslcert ipport=0.0.0.0:$Port certhash="$($CertificateImport.Thumbprint)" appid="{$GUID}"
+                    #The following fails with "Cannot create a file when that file already exists." when the same cert is used on multiple ports
+                    #Add-NetIPHttpsCertBinding -CertificateHash $CertificateImport.Thumbprint -ApplicationId "{$GUID}" -IpPort "0.0.0.0:$Port" -CertificateStoreName My -NullEncryption:$false
                 }
             }
         }

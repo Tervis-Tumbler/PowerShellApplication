@@ -217,20 +217,20 @@ function Install-PowerShellApplicationUniversalDashboard {
         $PowerShellNugetDependencies,
         $CommandString,
         [Switch]$UseTLS,
-        $PassswordstateAPIKey,
+        $PasswordstateAPIKey,
         [Parameter(Mandatory)]$Port
     )
     process {
-        if ($PassswordstateAPIKey) {
+        if ($PasswordstateAPIKey) {
             $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $PassswordstateAPIKey
+Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
 Set-PasswordstateAPIType -APIType Standard
 
 "@ + $CommandString
         }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Port -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Port -AsHashTable
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Dashboard.ps1
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
@@ -260,20 +260,20 @@ function Install-PowerShellApplicationPolaris {
         $PowerShellNugetDependencies,
         $CommandString,
         [Switch]$UseTLS,
-        $PassswordstateAPIKey,
+        $PasswordstateAPIKey,
         [Parameter(Mandatory)]$Ports
     )
     process {
-        if ($PassswordstateAPIKey) {
+        if ($PasswordstateAPIKey) {
             $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $PassswordstateAPIKey
+Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
 Set-PasswordstateAPIType -APIType Standard
 
 "@ + $CommandString
         }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PassswordstateAPIKey, Ports -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Ports -AsHashTable
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Polaris.ps1 -ParamBlock @"
 param (

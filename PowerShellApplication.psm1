@@ -192,7 +192,7 @@ $($LoadPowerShellModulesCommandString.ToString())
 $(if ($LoadNugetDependenciesCommandString){
     $LoadNugetDependenciesCommandString.ToString()
 })
-
+$ProgressPreference = "SilentlyContinue"
 $CommandString
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName

@@ -156,7 +156,7 @@ function Install-PowerShellApplicationFiles {
         $ProgressPreference = $ProgressPreferenceBefore
 
         $LoadPowerShellModulesCommandString = @"
-`$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")"
+`$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ","),$($TervisAzureDevOpsModuleDependencies -join ",")"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies -join ",")"
 if(`$PowershellGalleryModulesArrayAsString){
@@ -166,12 +166,17 @@ else{
     `$PowershellGalleryModules = @()
 }
 
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2 |
+`$PSM1Files = Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2
+`$TervisModules |
 ForEach-Object {
-    if(`$_.BaseName -notin `$PowershellGalleryModules){
-        Import-Module -Name `$_.Directory -Force
+    `$PSM1File = `$PSM1Files | 
+    Where-Object BaseName -eq `$_
+
+    if(`$PSM1File.BaseName -notin `$PowershellGalleryModules){
+        Import-Module -Name `$PSM1File.Directory -Force
     }
 }
+
 `$PowershellGalleryModules | ForEach-Object {
     Import-Module -Name "$PowerShellApplicationInstallDirectory\`$_"
 }
@@ -195,7 +200,7 @@ $($LoadPowerShellModulesCommandString.ToString())
 $(if ($LoadNugetDependenciesCommandString){
     $LoadNugetDependenciesCommandString.ToString()
 })
-$ProgressPreference = "SilentlyContinue"
+`$ProgressPreference = "SilentlyContinue"
 $CommandString
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName

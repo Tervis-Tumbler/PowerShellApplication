@@ -150,7 +150,10 @@ function Install-PowerShellApplicationFiles {
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
         ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, TervisAzureDevOpsModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
 
+        $ProgressPreferenceBefore = $ProgressPreference
+        $ProgressPreference = "SilentlyContinue"
         Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
+        $ProgressPreference = $ProgressPreferenceBefore
 
         $LoadPowerShellModulesCommandString = @"
 `$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")"

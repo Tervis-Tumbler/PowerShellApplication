@@ -86,13 +86,8 @@ function Invoke-PowerShellApplicationPSDepend {
             $PSDependInputObject.Add( "https://tervis.visualstudio.com/PowerShell/_git/$_", "master")
         }
     }
-
-    if ($PowerShellGalleryDependencies) {
-        $PowerShellGalleryDependencies |
-        ForEach-Object {
-            Save-Module -Name $_ -Path $Path
-        }
-    }
+    
+    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject | Out-Null
 
     if ($NugetDependencies) {
         $NugetDependencies |
@@ -115,6 +110,13 @@ function Invoke-PowerShellApplicationPSDepend {
         }
     }
 
+    if ($PowerShellGalleryDependencies) {
+        $PowerShellGalleryDependencies |
+        ForEach-Object {
+            Save-Module -Name $_ -Path $Path
+        }
+    }
+
     if ($PowerShellNugetDependencies) {
         $PowerShellNugetDependencies |
         ForEach-Object -Begin {
@@ -125,8 +127,6 @@ function Invoke-PowerShellApplicationPSDepend {
             UnRegister-PackageSource -Source TemporaryNuget.org | Out-Null
         }
     }
-
-    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject | Out-Null
 }
 
 function Install-PowerShellApplicationFiles {

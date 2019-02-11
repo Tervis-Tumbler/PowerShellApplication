@@ -113,7 +113,7 @@ function Invoke-PowerShellApplicationPSDepend {
     if ($PowerShellGalleryDependencies) {
         $PowerShellGalleryDependencies |
         ForEach-Object {
-            Save-Module -Name $_ -Path $Path -AcceptLicense
+            Save-Module @_ -Path $Path -AcceptLicense
         }
     }
 

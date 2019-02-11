@@ -251,7 +251,7 @@ Set-PasswordstateAPIType -APIType Standard
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-PasswordstateDocument -DocumentID 11 -OutFile "$Remote\certificate.pfx" -DocumentLocation password
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
         }
     }
 }

@@ -173,12 +173,12 @@ ForEach-Object {
     Where-Object BaseName -eq `$_
 
     if(`$PSM1File.BaseName -notin `$PowershellGalleryModules){
-        Import-Module -Name `$PSM1File.Directory -Force
+        Import-Module -Name `$PSM1File.Directory -Force -Global
     }
 }
 
 `$PowershellGalleryModules | ForEach-Object {
-    Import-Module -Name "$PowerShellApplicationInstallDirectory\`$_"
+    Import-Module -Name "$PowerShellApplicationInstallDirectory\`$_" -Global
 }
 "@
         $LoadNugetDependenciesCommandString = if ($NugetDependencies -or $PowerShellNugetDependencies) {

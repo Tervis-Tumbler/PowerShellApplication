@@ -158,7 +158,7 @@ function Install-PowerShellApplicationFiles {
         $LoadPowerShellModulesCommandString = @"
 `$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ","),$($TervisAzureDevOpsModuleDependencies -join ",")"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
-`$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies -join ",")"
+`$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies.Name -join ",")"
 if(`$PowershellGalleryModulesArrayAsString){
     `$PowershellGalleryModules = `$PowershellGalleryModulesArrayAsString -split ","
 }

@@ -245,14 +245,15 @@ Set-PasswordstateAPIType -APIType Standard
         $Local = $Result.PowerShellApplicationInstallDirectory
     
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Dashboard.ps1"
-            nssm set $Using:ModuleName AppDirectory $Using:Local
-            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP
+            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Dashboard.ps1" | Write-Verbose
+            nssm set $Using:ModuleName AppDirectory $Using:Local | Write-Verbose
+            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
         }
 
         if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
             Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
         }
+        $Remote
     }
 }
 

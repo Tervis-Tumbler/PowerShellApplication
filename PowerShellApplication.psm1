@@ -160,7 +160,7 @@ function Install-PowerShellApplicationFiles {
         $ProgressPreference = $ProgressPreferenceBefore
 
         $LoadPowerShellModulesCommandString = @"
-`$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ","),$($TervisAzureDevOpsModuleDependencies -join ",")"
+`$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")$(if($TervisAzureDevOpsModuleDependencies){",$($TervisAzureDevOpsModuleDependencies -join ",")"})"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies.Name -join ",")"
 if(`$PowershellGalleryModulesArrayAsString){

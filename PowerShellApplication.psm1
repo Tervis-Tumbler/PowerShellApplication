@@ -142,6 +142,8 @@ function Install-PowerShellApplicationFiles {
         $NugetDependencies,
         $PowerShellNugetDependencies,
         [String]$CommandString,
+        [Switch]$UseTLS,
+        $PasswordstateAPIKey,
         [String]$ParamBlock,
         $ScriptFileName = "Script.ps1"
     )
@@ -149,6 +151,19 @@ function Install-PowerShellApplicationFiles {
         if ($ComputerName) {
             $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
             $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName     
+        }
+
+        if ($UseTLS) {
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $PowerShellApplicationInstallDirectoryRemote
+        }
+
+        if ($PasswordstateAPIKey) {
+            $CommandString = @"
+Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
+Set-PasswordstateAPIType -APIType Standard
+Set-PasswordstateComputerName -ComputerName passwordstate.tervis.com
+
+"@ + $CommandString
         }
 
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
@@ -232,16 +247,8 @@ function Install-PowerShellApplicationUniversalDashboard {
         [Parameter(Mandatory)]$Port
     )
     process {
-        if ($PasswordstateAPIKey) {
-            $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
-Set-PasswordstateAPIType -APIType Standard
-
-"@ + $CommandString
-        }
-
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Port -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty Port -AsHashTable
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Dashboard.ps1
         $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
@@ -253,9 +260,6 @@ Set-PasswordstateAPIType -APIType Standard
             New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
         }
 
-        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
-        }
         $Remote
     }
 }
@@ -276,16 +280,9 @@ function Install-PowerShellApplicationPolaris {
         [Parameter(Mandatory)]$Ports
     )
     process {
-        if ($PasswordstateAPIKey) {
-            $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
-Set-PasswordstateAPIType -APIType Standard
-
-"@ + $CommandString
-        }
 
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Ports -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty Ports -AsHashTable
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters -ScriptFileName Polaris.ps1 -ParamBlock @"
 param (
@@ -304,8 +301,7 @@ param (
             }
         }
 
-        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
+        if ($UseTLS) {
             $CertificatePassword = Get-TervisPasswordSateTervisDotComWildCardCertificatePassword
 
             Invoke-Command -ComputerName $ComputerName -ScriptBlock {                
@@ -371,36 +367,22 @@ function Invoke-PowerShellApplicationDockerBuild {
         [Parameter(Mandatory)]$Port
     )
     process {
-        if ($PasswordstateAPIKey) {
-            $PSBoundParameters.CommandString = @"
-Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
-Set-PasswordstateAPIType -APIType Standard
-
-"@ + $CommandString
-        }
-
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
-        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Port -AsHashTable
+        ConvertFrom-PSBoundParameters -ExcludeProperty Port -AsHashTable
         $PowerShellApplicationInstallDirectoryRemote = New-TemporaryDirectory -TemporaryFolderType System
 
         $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters `
-            -ScriptFileName Script.ps1 `
             -PowerShellApplicationInstallDirectory "/opt/tervis/$ModuleName" `
             -PowerShellApplicationInstallDirectoryRemote $PowerShellApplicationInstallDirectoryRemote
 
-        $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
-        $Local = $Result.PowerShellApplicationInstallDirectory
+        # $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
+        # $Local = $Result.PowerShellApplicationInstallDirectory
     
-        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Script.ps1" | Write-Verbose
-            nssm set $Using:ModuleName AppDirectory $Using:Local | Write-Verbose
-            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
-        }
-
-        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
-            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
-        }
-        $Remote
+        # Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+        #     nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Script.ps1" | Write-Verbose
+        #     nssm set $Using:ModuleName AppDirectory $Using:Local | Write-Verbose
+        #     New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
+        # }
 
         Push-Location -Path $PowerShellApplicationInstallDirectoryRemote
 
@@ -411,9 +393,9 @@ Set-PasswordstateAPIType -APIType Standard
     
 @"
 FROM mcr.microsoft.com/powershell:6.2.0-alpine-3.8
-#COPY . /usr/local/share/powershell/Modules
-COPY . /opt/tervis/TervisCustomer
-ENTRYPOINT ["pwsh"]
+COPY . /opt/tervis/$ModuleName
+ENTRYPOINT ["pwsh","-file","/opt/tervis/$ModuleName/Script.ps1"]
+EXPOSE 10000
 "@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
     
         docker build --no-cache --tag "$($ModuleName.ToLower())v1" .

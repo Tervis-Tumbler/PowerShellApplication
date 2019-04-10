@@ -175,6 +175,7 @@ Set-PasswordstateComputerName -ComputerName passwordstate.tervis.com
         $ProgressPreference = $ProgressPreferenceBefore
 
         $LoadPowerShellModulesCommandString = @"
+Set-Location -Path $PowerShellApplicationInstallDirectory
 `$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")$(if($TervisAzureDevOpsModuleDependencies){",$($TervisAzureDevOpsModuleDependencies -join ",")"})"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies.Name -join ",")"

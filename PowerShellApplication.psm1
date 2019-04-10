@@ -375,15 +375,6 @@ function Invoke-PowerShellApplicationDockerBuild {
             -PowerShellApplicationInstallDirectory "/opt/tervis/$ModuleName" `
             -PowerShellApplicationInstallDirectoryRemote $PowerShellApplicationInstallDirectoryRemote
 
-        # $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
-        # $Local = $Result.PowerShellApplicationInstallDirectory
-    
-        # Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-        #     nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Script.ps1" | Write-Verbose
-        #     nssm set $Using:ModuleName AppDirectory $Using:Local | Write-Verbose
-        #     New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
-        # }
-
         Push-Location -Path $PowerShellApplicationInstallDirectoryRemote
 
 @"
@@ -398,7 +389,7 @@ ENTRYPOINT ["pwsh","-file","/opt/tervis/$ModuleName/Script.ps1"]
 EXPOSE 10000
 "@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
     
-        docker build --no-cache --tag "$($ModuleName.ToLower())v1" .
+        docker build --no-cache --tag "tervis/$($ModuleName.ToLower()):v1.0.0" .
     
         Pop-Location
     

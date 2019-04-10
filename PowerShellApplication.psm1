@@ -131,7 +131,9 @@ function Invoke-PowerShellApplicationPSDepend {
 
 function Install-PowerShellApplicationFiles {
     param (
-        [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory,ParameterSetName="ComputerName",ValueFromPipelineByPropertyName)]$ComputerName,
+        [Parameter(Mandatory,ParameterSetName="PowerShellApplicationInstallDirectory")]$PowerShellApplicationInstallDirectory,
+        [Parameter(Mandatory,ParameterSetName="PowerShellApplicationInstallDirectory")]$PowerShellApplicationInstallDirectoryRemote,
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
         $TervisModuleDependencies,
@@ -144,8 +146,10 @@ function Install-PowerShellApplicationFiles {
         $ScriptFileName = "Script.ps1"
     )
     process {
-        $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
-        $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName
+        if ($ComputerName) {
+            $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
+            $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName     
+        }
 
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
         ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, TervisAzureDevOpsModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
@@ -161,8 +165,7 @@ function Install-PowerShellApplicationFiles {
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies.Name -join ",")"
 if(`$PowershellGalleryModulesArrayAsString){
     `$PowershellGalleryModules = `$PowershellGalleryModulesArrayAsString -split ","
-}
-else{
+} else {
     `$PowershellGalleryModules = @()
 }
 
@@ -355,56 +358,68 @@ function Install-PowerShellApplication {
 
 function Invoke-PowerShellApplicationDockerBuild {
     param (
+        [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
-        $DependentTervisModuleNames,
-        [Parameter(Mandatory)][String]$CommandsString
+        $TervisModuleDependencies,
+        $TervisAzureDevOpsModuleDependencies,
+        $PowerShellGalleryDependencies,
+        $NugetDependencies,
+        $PowerShellNugetDependencies,
+        $CommandString,
+        [Switch]$UseTLS,
+        $PasswordstateAPIKey,
+        [Parameter(Mandatory)]$Port
     )
-    Install-PowerShellApplicationFiles 
-    $BuildDirectory = "$($env:TMPDIR)$($ModuleName)Docker"
-    New-Item -ItemType Directory -Path $BuildDirectory -ErrorAction SilentlyContinue
-    
-    $PSDependInputObject =  @{
-        PSDependOptions = @{
-            Target = $DirectoryRemote
+    process {
+        if ($PasswordstateAPIKey) {
+            $PSBoundParameters.CommandString = @"
+Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
+Set-PasswordstateAPIType -APIType Standard
+
+"@ + $CommandString
         }
-    }
 
-    $ModuleName |
-    ForEach-Object { 
-        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-    }
+        $PowerShellApplicationFilesParameters = $PSBoundParameters |
+        ConvertFrom-PSBoundParameters -ExcludeProperty UseTLS, PasswordstateAPIKey, Port -AsHashTable
+        $PowerShellApplicationInstallDirectoryRemote = New-TemporaryDirectory -TemporaryFolderType System
 
-    $DependentTervisModuleNames |
-    ForEach-Object { 
-        $PSDependInputObject.Add( "Tervis-Tumbler/$_", "master") 
-    }
+        $Result = Install-PowerShellApplicationFiles @PowerShellApplicationFilesParameters `
+            -ScriptFileName Script.ps1 `
+            -PowerShellApplicationInstallDirectory "/opt/tervis/$ModuleName" `
+            -PowerShellApplicationInstallDirectoryRemote $PowerShellApplicationInstallDirectoryRemote
+
+        $Remote = $Result.PowerShellApplicationInstallDirectoryRemote
+        $Local = $Result.PowerShellApplicationInstallDirectory
     
-    Invoke-PSDepend -Force -Install -InputObject $PSDependInputObject
+        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+            nssm install $Using:ModuleName powershell.exe -file "$Using:Local\Script.ps1" | Write-Verbose
+            nssm set $Using:ModuleName AppDirectory $Using:Local | Write-Verbose
+            New-NetFirewallRule -Name $Using:ModuleName -Profile Any -Direction Inbound -Action Allow -LocalPort $Using:Port -DisplayName $Using:ModuleName -Protocol TCP | Write-Verbose
+        }
 
-    Push-Location -Path $BuildDirectory
+        if ($UseTLS -and -not (Test-Path -Path "$Remote\certificate.pfx")) {
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $Remote
+        }
+        $Remote
+
+        Push-Location -Path $PowerShellApplicationInstallDirectoryRemote
 
 @"
 **/.git
 **/.vscode
 "@ | Out-File -Encoding ascii -FilePath .dockerignore -Force
-
+    
 @"
-FROM microsoft/powershell
-ENV TZ=America/New_York
-RUN echo `$TZ > /etc/timezone && \
-    apt-get update && apt-get install -y tzdata && \
-    rm /etc/localtime && \
-    ln -snf /usr/share/zoneinfo/`$TZ /etc/localtime && \
-    dpkg-reconfigure -f noninteractive tzdata && \
-    apt-get clean
-COPY . /usr/local/share/powershell/Modules
-#ENTRYPOINT ["pwsh", "-Command", "$CommandsString" ]
+FROM mcr.microsoft.com/powershell:6.2.0-alpine-3.8
+#COPY . /usr/local/share/powershell/Modules
+COPY . /opt/tervis/TervisCustomer
 ENTRYPOINT ["pwsh"]
 "@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
-
-    docker build --no-cache -t $ModuleName .
-
-    Pop-Location
-
-    Remove-Item -Path $BuildDirectory -Recurse -Force
+    
+        docker build --no-cache --tag "$($ModuleName.ToLower())v1" .
+    
+        Pop-Location
+    
+        Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -Recurse -Force
+    }
 }

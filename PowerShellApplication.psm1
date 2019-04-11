@@ -389,7 +389,7 @@ function Invoke-PowerShellApplicationDockerBuild {
 FROM mcr.microsoft.com/powershell:6.2.0-alpine-3.8
 COPY . /opt/tervis/$ModuleName
 ENTRYPOINT ["pwsh","-file","/opt/tervis/$ModuleName/Script.ps1"]
-EXPOSE 10000
+EXPOSE $Port
 "@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
     
         docker build --no-cache --tag "tervis/$($ModuleName.ToLower()):v1.0.0" .

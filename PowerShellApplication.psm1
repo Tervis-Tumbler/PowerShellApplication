@@ -153,10 +153,6 @@ function Install-PowerShellApplicationFiles {
             $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName     
         }
 
-        if ($UseTLS) {
-            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $PowerShellApplicationInstallDirectoryRemote
-        }
-
         if ($PasswordstateAPIKey) {
             $CommandString = @"
 Set-PasswordstateAPIKey -APIKey $PasswordstateAPIKey
@@ -202,7 +198,9 @@ ForEach-Object {
 "@
         $LoadNugetDependenciesCommandString = if ($NugetDependencies -or $PowerShellNugetDependencies) {
             @"
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory -Recurse -Filter *.dll -Depth 3 | 
+Get-ChildItem -Path $PowerShellApplicationInstallDirectory |
+Where-Object BaseName -NotIn (`$PowershellGalleryModules + `$TervisModules) |
+Get-ChildItem -Recurse -Filter *.dll -Depth 3 | 
 Where-Object FullName -match netstandard2.0 |
 ForEach-Object {
     Add-Type -Path `$_.FullName
@@ -223,7 +221,11 @@ $(if ($LoadNugetDependenciesCommandString){
 $CommandString
 "@ |
         Out-File -FilePath $PowerShellApplicationInstallDirectoryRemote\$ScriptFileName
-        
+
+        if ($UseTLS) {
+            Get-TervisPasswordSateTervisDotComWildCardCertificate -Type pfx -OutPath $PowerShellApplicationInstallDirectoryRemote
+        }
+
         $OFS = $OFSBackup
         [PSCustomObject]@{
             PowerShellApplicationInstallDirectory = $PowerShellApplicationInstallDirectory

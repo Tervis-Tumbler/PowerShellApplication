@@ -367,7 +367,8 @@ function Invoke-PowerShellApplicationDockerBuild {
         $CommandString,
         [Switch]$UseTLS,
         $PasswordstateAPIKey,
-        [Parameter(Mandatory)]$Port
+        [Parameter(Mandatory)]$Port,
+        $DirectoryOfFilesToIncludeInContainer
     )
     process {
         $PowerShellApplicationFilesParameters = $PSBoundParameters |
@@ -378,6 +379,7 @@ function Invoke-PowerShellApplicationDockerBuild {
             -PowerShellApplicationInstallDirectory "/opt/tervis/$ModuleName" `
             -PowerShellApplicationInstallDirectoryRemote $PowerShellApplicationInstallDirectoryRemote
 
+        Copy-Item -Path $DirectoryOfFilesToIncludeInContainer -Destination $PowerShellApplicationInstallDirectoryRemote -Recurse
         Push-Location -Path $PowerShellApplicationInstallDirectoryRemote
 
 @"
@@ -392,10 +394,14 @@ ENTRYPOINT ["pwsh","-file","/opt/tervis/$ModuleName/Script.ps1"]
 EXPOSE $Port
 "@ | Out-File -Encoding ascii -FilePath .\Dockerfile -Force
     
-        docker build --no-cache --tag "tervis/$($ModuleName.ToLower()):v1.0.0" .
+        $Module = Get-Module -Name $ModuleName
+        $VersionNumber = $Module.Version.ToString()
+        $ContainerImageIdentifier = "$($ModuleName.ToLower()):v$VersionNumber"
+        docker build --no-cache --tag $ContainerImageIdentifier .
     
         Pop-Location
     
-        Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -Recurse -Force
+        #Remove-Item -Path $PowerShellApplicationInstallDirectoryRemote -Recurse -Force
+        $ContainerImageIdentifier
     }
 }

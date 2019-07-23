@@ -46,11 +46,11 @@ function Get-PowerShellApplicationInstallDirectory {
     param (
         [Parameter(Mandatory,ValueFromPipelineByPropertyName)]$ComputerName,
         [Parameter(Mandatory)]$EnvironmentName,
-        [Parameter(Mandatory)]$ModuleName
+        [Parameter(Mandatory)]$ScheduledTaskName
     )
     process {
         $ProgramData = Invoke-Command -ComputerName $ComputerName -ScriptBlock { $env:ProgramData }
-        "$ProgramData\PowerShellApplication\$EnvironmentName\$ModuleName"
+        "$ProgramData\PowerShellApplication\$EnvironmentName\$ScheduledTaskName"
     }
 }
 
@@ -136,6 +136,7 @@ function Install-PowerShellApplicationFiles {
         [Parameter(Mandatory,ParameterSetName="PowerShellApplicationInstallDirectory")]$PowerShellApplicationInstallDirectoryRemote,
         [Parameter(Mandatory)]$EnvironmentName,
         [Parameter(Mandatory)]$ModuleName,
+        [Parameter(Mandatory)]$ScheduledTaskName,
         $TervisModuleDependencies,
         $TervisAzureDevOpsModuleDependencies,
         $PowerShellGalleryDependencies,
@@ -149,7 +150,7 @@ function Install-PowerShellApplicationFiles {
     )
     process {
         if ($ComputerName) {
-            $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ModuleName $ModuleName
+            $PowerShellApplicationInstallDirectory = Get-PowerShellApplicationInstallDirectory -ComputerName $ComputerName -EnvironmentName $EnvironmentName -ScheduledTaskName $ScheduledTaskName
             $PowerShellApplicationInstallDirectoryRemote = $PowerShellApplicationInstallDirectory | ConvertTo-RemotePath -ComputerName $ComputerName     
         }
 
@@ -340,7 +341,7 @@ function Install-PowerShellApplication {
     )
     process {
         $Parameters = $PSBoundParameters
-        "ScheduledTasksCredential","ScheduledTaskName","RepetitionIntervalName" |
+        "ScheduledTasksCredential","RepetitionIntervalName" |
         ForEach-Object {
             $Parameters.Remove($_) | Out-Null
         }

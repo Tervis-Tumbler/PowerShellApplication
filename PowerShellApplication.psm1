@@ -146,7 +146,8 @@ function Install-PowerShellApplicationFiles {
         [Switch]$UseTLS,
         $PasswordstateAPIKey,
         [String]$ParamBlock,
-        $ScriptFileName = "Script.ps1"
+        $ScriptFileName = "Script.ps1",
+        [Switch]$ScriptOnly
     )
     process {
         if ($ComputerName) {
@@ -166,10 +167,12 @@ Set-PasswordstateComputerName -ComputerName passwordstate.tervis.com
         $PowerShellApplicationPSDependParameters = $PSBoundParameters |
         ConvertFrom-PSBoundParameters -Property ModuleName, TervisModuleDependencies, TervisAzureDevOpsModuleDependencies, PowerShellGalleryDependencies, NugetDependencies, PowerShellNugetDependencies -AsHashTable
 
-        $ProgressPreferenceBefore = $ProgressPreference
-        $ProgressPreference = "SilentlyContinue"
-        Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
-        $ProgressPreference = $ProgressPreferenceBefore
+        if (-not $ScriptOnly) {
+            $ProgressPreferenceBefore = $ProgressPreference
+            $ProgressPreference = "SilentlyContinue"
+            Invoke-PowerShellApplicationPSDepend -Path $PowerShellApplicationInstallDirectoryRemote @PowerShellApplicationPSDependParameters
+            $ProgressPreference = $ProgressPreferenceBefore            
+        }
 
         $LoadPowerShellModulesCommandString = @"
 Set-Location -Path $PowerShellApplicationInstallDirectory

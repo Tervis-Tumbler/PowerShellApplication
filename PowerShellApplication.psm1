@@ -175,7 +175,8 @@ Set-PasswordstateComputerName -ComputerName passwordstate.tervis.com
         }
 
         $LoadPowerShellModulesCommandString = @"
-Set-Location -Path $PowerShellApplicationInstallDirectory
+`$PowerShellApplicationInstallDirectory = "$PowerShellApplicationInstallDirectory"
+Set-Location -Path `$PowerShellApplicationInstallDirectory
 `$TervisModulesArrayAsString = "$($TervisModuleDependencies -join ",")$(if($TervisAzureDevOpsModuleDependencies){",$($TervisAzureDevOpsModuleDependencies -join ",")"})"
 `$TervisModules = `$TervisModulesArrayAsString -split ","
 `$PowershellGalleryModulesArrayAsString = "$($PowerShellGalleryDependencies.Name -join ",")"
@@ -185,7 +186,7 @@ if(`$PowershellGalleryModulesArrayAsString){
     `$PowershellGalleryModules = @()
 }
 
-`$PSM1Files = Get-ChildItem -Path $PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2
+`$PSM1Files = Get-ChildItem -Path `$PowerShellApplicationInstallDirectory -File -Recurse -Filter *.psm1 -Depth 2
 `$TervisModules |
 ForEach-Object {
     `$PSM1File = `$PSM1Files | 
@@ -197,12 +198,12 @@ ForEach-Object {
 }
 
 `$PowershellGalleryModules | ForEach-Object {
-    Import-Module -Name "$PowerShellApplicationInstallDirectory\`$_" -Global
+    Import-Module -Name "`$PowerShellApplicationInstallDirectory\`$_" -Global
 }
 "@
         $LoadNugetDependenciesCommandString = if ($NugetDependencies -or $PowerShellNugetDependencies) {
             @"
-Get-ChildItem -Path $PowerShellApplicationInstallDirectory |
+Get-ChildItem -Path `$PowerShellApplicationInstallDirectory |
 Where-Object BaseName -NotIn (`$PowershellGalleryModules + `$TervisModules) |
 Get-ChildItem -Recurse -Filter *.dll -Depth 3 | 
 Where-Object FullName -match netstandard2.0 |
